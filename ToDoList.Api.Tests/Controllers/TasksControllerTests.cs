@@ -10,13 +10,13 @@ namespace ToDoList.Api.Tests.Controllers;
 
 public class TasksControllerTests
 {
-    private readonly Mock<ITasksService> mockTaskService;
+    private readonly Mock<ITasksService> tasksServiceMock;
     private readonly TasksController controller;
 
     public TasksControllerTests()
     {
-        mockTaskService = new Mock<ITasksService>();
-        controller = new TasksController(mockTaskService.Object);
+        tasksServiceMock = new Mock<ITasksService>();
+        controller = new TasksController(tasksServiceMock.Object);
     }
     
     [Fact]
@@ -31,7 +31,7 @@ public class TasksControllerTests
         };
         
         var taskId = Guid.NewGuid();
-        mockTaskService.Setup(service => service.Create(It.IsAny<CreateTaskDto>())).Returns(taskId);
+        tasksServiceMock.Setup(service => service.Create(It.IsAny<CreateTaskDto>())).Returns(taskId);
 
         // Act
         var result = controller.Create(createTaskDto);
@@ -46,7 +46,7 @@ public class TasksControllerTests
     public void GetList_ReturnsEmptyList_WhenNoTasksExist()
     {
         // Arrange
-        mockTaskService.Setup(service => service.GetList()).Returns(new List<GetTaskDto>());
+        tasksServiceMock.Setup(service => service.GetList()).Returns(new List<GetTaskDto>());
 
         // Act
         var result = controller.GetList();
@@ -64,7 +64,7 @@ public class TasksControllerTests
         // Arrange
         var updateTaskStatusDto = new UpdateTaskStatusDto { IsCompleted = true };
         var taskId = Guid.NewGuid();
-        mockTaskService.Setup(service => service.UpdateStatus(It.IsAny<Guid>(), It.IsAny<UpdateTaskStatusDto>()))
+        tasksServiceMock.Setup(service => service.UpdateStatus(It.IsAny<Guid>(), It.IsAny<UpdateTaskStatusDto>()))
             .Verifiable();
 
         // Act
@@ -73,7 +73,7 @@ public class TasksControllerTests
         // Assert
         result.Should().BeOfType<OkResult>();
 
-        mockTaskService.Verify();
+        tasksServiceMock.Verify();
     }
     
     [Fact]
@@ -82,7 +82,7 @@ public class TasksControllerTests
         // Arrange
         var updateTaskStatusDto = new UpdateTaskStatusDto { IsCompleted = true };
         var taskId = Guid.NewGuid();
-        mockTaskService.Setup(service => service.UpdateStatus(It.IsAny<Guid>(), It.IsAny<UpdateTaskStatusDto>()))
+        tasksServiceMock.Setup(service => service.UpdateStatus(It.IsAny<Guid>(), It.IsAny<UpdateTaskStatusDto>()))
             .Throws(new TaskNotFoundException($"Task {taskId} not found."));
 
         // Act
@@ -98,7 +98,7 @@ public class TasksControllerTests
     {
         // Arrange
         var taskId = Guid.NewGuid();
-        mockTaskService.Setup(service => service.Delete(taskId))
+        tasksServiceMock.Setup(service => service.Delete(taskId))
             .Throws(new TaskNotFoundException($"Task {taskId} not found."));
 
         // Act
@@ -114,7 +114,7 @@ public class TasksControllerTests
     {
         // Arrange
         var taskId = Guid.NewGuid();
-        mockTaskService.Setup(service => service.Delete(It.IsAny<Guid>())).Verifiable();
+        tasksServiceMock.Setup(service => service.Delete(It.IsAny<Guid>())).Verifiable();
 
         // Act
         var result = controller.Delete(taskId);
@@ -122,6 +122,6 @@ public class TasksControllerTests
         // Assert
         result.Should().BeOfType<NoContentResult>();
         
-        mockTaskService.Verify(service => service.Delete(taskId), Times.Once);
+        tasksServiceMock.Verify(service => service.Delete(taskId), Times.Once);
     }
 }
