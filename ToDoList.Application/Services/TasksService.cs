@@ -1,3 +1,4 @@
+using ToDoList.Application.Exceptions;
 using ToDoList.Application.Interfaces;
 using ToDoList.Shared.Dto;
 
@@ -22,6 +23,6 @@ public class TasksService : ITasksService
 
     public void Delete(Guid id)
     {
-        throw new NotImplementedException();
+        throw new TaskNotFoundException($"Task with ID {id} not found.");
     }
 }

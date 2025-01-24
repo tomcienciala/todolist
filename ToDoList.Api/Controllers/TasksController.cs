@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using ToDoList.Application.Exceptions;
 using ToDoList.Application.Interfaces;
 using ToDoList.Shared.Dto;
 
@@ -18,26 +19,52 @@ public class TasksController : ControllerBase
     [HttpPost]
     public ActionResult<Guid> Create([FromBody] CreateTaskDto createTaskDto)
     {
-        return Ok(tasksService.Create(createTaskDto));
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+        
+        var taskId = tasksService.Create(createTaskDto);
+        return Ok(taskId);
     }
     
     [HttpGet]
     public ActionResult<IEnumerable<GetTaskDto>> GetList()
     {
-        return Ok(tasksService.GetList());
+        var taskList = tasksService.GetList();
+        return Ok(taskList);
     }
 
     [HttpPatch("{id}")]
     public ActionResult Update(Guid id, [FromBody] UpdateTaskStatusDto updateTaskStatusDto)
     {
-        tasksService.UpdateStatus(id, updateTaskStatusDto);
-        return Ok();
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        try
+        {
+            tasksService.UpdateStatus(id, updateTaskStatusDto);
+            return Ok();
+        }
+        catch (TaskNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     [HttpDelete("{id}")]
     public ActionResult Delete(Guid id)
     {
-        tasksService.Delete(id);
-        return Ok();
+        try
+        {
+            tasksService.Delete(id);
+            return NoContent();
+        }
+        catch (TaskNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 }
