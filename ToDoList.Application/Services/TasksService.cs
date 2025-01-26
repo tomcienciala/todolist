@@ -32,7 +32,7 @@ public class TasksService : ITasksService
             Name = taskDto.Name,
             Description = taskDto.Description,
             DueDate = taskDto.DueDate,
-            IsCompleted = true
+            IsCompleted = false
         };
         
         tasksRepository.Add(task);
