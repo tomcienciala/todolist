@@ -5,10 +5,10 @@ namespace ToDoList.Data;
 
 public class UnitOfWork : IUnitOfWork
 {
-    private readonly DbContext context;
+    private readonly AppDbContext context;
     private readonly Dictionary<Type, object> repositories = new();
 
-    public UnitOfWork(DbContext context)
+    public UnitOfWork(AppDbContext context)
     {
         this.context = context;
     }

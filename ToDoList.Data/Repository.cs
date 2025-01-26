@@ -5,10 +5,10 @@ namespace ToDoList.Data;
 
 public class Repository<T> : IRepository<T> where T : class
 {
-    private readonly DbContext context;
+    private readonly AppDbContext context;
     private readonly DbSet<T> dbSet;
     
-    public Repository(DbContext context)
+    public Repository(AppDbContext context)
     {
         this.context = context;
         this.dbSet = context.Set<T>();
