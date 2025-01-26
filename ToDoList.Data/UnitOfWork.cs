@@ -24,9 +24,9 @@ public class UnitOfWork : IUnitOfWork
         return (IRepository<T>)repositories[typeof(T)];
     }
 
-    public async Task<int> SaveAsync()
+    public async Task<int> SaveAsync(CancellationToken cancellationToken)
     {
-        return await context.SaveChangesAsync();
+        return await context.SaveChangesAsync(cancellationToken);
     }
     
     public void Dispose()

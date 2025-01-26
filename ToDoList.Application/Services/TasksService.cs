@@ -17,11 +17,11 @@ public class TasksService : ITasksService
         tasksRepository = unitOfWork.GetRepository<TaskEntity>();
     }
     
-    public async Task<Guid> CreateAsync(CreateTaskDto taskDto)
+    public async Task<Guid> CreateAsync(CreateTaskDto taskDto, CancellationToken cancellationToken)
     {
         var id = Guid.NewGuid();
 
-        if (await tasksRepository.GetByIdAsync(id) is not null)
+        if (await tasksRepository.GetByIdAsync(id, cancellationToken) is not null)
         {
             throw new GuidAlreadyExistsException($"Task with Guid: {id} already exists.");
         }
@@ -36,13 +36,13 @@ public class TasksService : ITasksService
         };
         
         tasksRepository.Add(task);
-        await unitOfWork.SaveAsync();
+        await unitOfWork.SaveAsync(cancellationToken);
         return id;
     }
 
-    public async Task<IEnumerable<GetTaskDto>> GetListAsync()
+    public async Task<IEnumerable<GetTaskDto>> GetListAsync(CancellationToken cancellationToken)
     {
-        var taskList = await tasksRepository.GetAllAsync();
+        var taskList = await tasksRepository.GetAllAsync(cancellationToken);
         
         return taskList.Select(task => new GetTaskDto()
             {
@@ -54,9 +54,9 @@ public class TasksService : ITasksService
         });
     }
 
-    public async Task UpdateStatusAsync(Guid id, UpdateTaskStatusDto taskDto)
+    public async Task UpdateStatusAsync(Guid id, UpdateTaskStatusDto taskDto, CancellationToken cancellationToken)
     {
-        var task = await tasksRepository.GetByIdAsync(id);
+        var task = await tasksRepository.GetByIdAsync(id, cancellationToken);
         if (task == null)
         {
             throw new TaskNotFoundException($"Task with ID {id} not found.");
@@ -64,18 +64,18 @@ public class TasksService : ITasksService
         
         task.IsCompleted = taskDto.IsCompleted;
         tasksRepository.Update(task);
-        await unitOfWork.SaveAsync();
+        await unitOfWork.SaveAsync(cancellationToken);
     }
 
-    public async Task DeleteAsync(Guid id)
+    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken)
     {
-        var task = await tasksRepository.GetByIdAsync(id);
+        var task = await tasksRepository.GetByIdAsync(id, cancellationToken);
         if (task == null)
         {
             throw new TaskNotFoundException($"Task with ID {id} not found.");
         }
         
         tasksRepository.Delete(task);
-        await unitOfWork.SaveAsync();
+        await unitOfWork.SaveAsync(cancellationToken);
     }
 }

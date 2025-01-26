@@ -17,7 +17,7 @@ public class TasksController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Guid>> CreateAsync([FromBody] CreateTaskDto createTaskDto)
+    public async Task<ActionResult<Guid>> CreateAsync([FromBody] CreateTaskDto createTaskDto, CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid)
         {
@@ -26,7 +26,7 @@ public class TasksController : ControllerBase
 
         try
         {
-            var taskId = await tasksService.CreateAsync(createTaskDto);
+            var taskId = await tasksService.CreateAsync(createTaskDto, cancellationToken);
             return Ok(taskId);
         }
         catch (GuidAlreadyExistsException ex)
@@ -36,14 +36,14 @@ public class TasksController : ControllerBase
     }
     
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<GetTaskDto>>> GetListAsync()
+    public async Task<ActionResult<IEnumerable<GetTaskDto>>> GetListAsync(CancellationToken cancellationToken)
     {
-        var taskList = await tasksService.GetListAsync();
+        var taskList = await tasksService.GetListAsync(cancellationToken);
         return Ok(taskList);
     }
 
     [HttpPatch("{id}")]
-    public async Task<ActionResult> UpdateAsync(Guid id, [FromBody] UpdateTaskStatusDto updateTaskStatusDto)
+    public async Task<ActionResult> UpdateAsync(Guid id, [FromBody] UpdateTaskStatusDto updateTaskStatusDto, CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid)
         {
@@ -52,7 +52,7 @@ public class TasksController : ControllerBase
 
         try
         {
-            await tasksService.UpdateStatusAsync(id, updateTaskStatusDto);
+            await tasksService.UpdateStatusAsync(id, updateTaskStatusDto, cancellationToken);
             return Ok();
         }
         catch (TaskNotFoundException ex)
@@ -62,11 +62,11 @@ public class TasksController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    public async Task<ActionResult> DeleteAsync(Guid id)
+    public async Task<ActionResult> DeleteAsync(Guid id, CancellationToken cancellationToken)
     {
         try
         {
-            await tasksService.DeleteAsync(id);
+            await tasksService.DeleteAsync(id, cancellationToken);
             return NoContent();
         }
         catch (TaskNotFoundException ex)

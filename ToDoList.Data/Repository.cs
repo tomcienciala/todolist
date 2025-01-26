@@ -14,14 +14,14 @@ public class Repository<T> : IRepository<T> where T : class
         this.dbSet = context.Set<T>();
     }
     
-    public async Task<IEnumerable<T>> GetAllAsync()
+    public async Task<IEnumerable<T>> GetAllAsync(CancellationToken cancellationToken)
     { 
-        return await dbSet.ToListAsync();
+        return await dbSet.ToListAsync(cancellationToken);
     }
 
-    public async Task<T?> GetByIdAsync(Guid id)
+    public async Task<T?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
-        return await dbSet.FindAsync(id);
+        return await dbSet.FindAsync(id, cancellationToken);
     }
 
     public void Add(T entity)

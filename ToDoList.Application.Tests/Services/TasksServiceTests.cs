@@ -37,15 +37,17 @@ namespace ToDoList.Application.Tests.Services
             tasksRepositoryMock.Setup(repo => repo.Add(It.IsAny<TaskEntity>()))
                 .Callback<TaskEntity>(task => expectedId = task.Id);
 
-            unitOfWorkMock.Setup(uow => uow.SaveAsync())
+            unitOfWorkMock.Setup(uow => uow.SaveAsync(It.IsAny<CancellationToken>()))
                 .Verifiable();
+            
+            var cancellationToken = CancellationToken.None;
 
             // Act
-            var result = await tasksService.CreateAsync(taskDto);
+            var result = await tasksService.CreateAsync(taskDto, cancellationToken);
 
             // Assert
             result.Should().Be(expectedId);
-            unitOfWorkMock.Verify(uow => uow.SaveAsync(), Times.Once);
+            unitOfWorkMock.Verify(uow => uow.SaveAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
         
         [Fact]
@@ -60,12 +62,14 @@ namespace ToDoList.Application.Tests.Services
             };
             
             var generatedId = Guid.NewGuid();
-            tasksRepositoryMock.Setup(repo => repo.GetByIdAsync(It.IsAny<Guid>()))
-                .Callback<Guid>(id => generatedId = id)
+            tasksRepositoryMock.Setup(repo => repo.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .Callback<Guid, CancellationToken>((id, token) => generatedId = id)
                 .ReturnsAsync(new TaskEntity());
+            
+            var cancellationToken = CancellationToken.None;
 
             // Act
-            var act = async () => await tasksService.CreateAsync(taskDto);
+            var act = async () => await tasksService.CreateAsync(taskDto, cancellationToken);
 
             // Assert
             await act.Should().ThrowAsync<GuidAlreadyExistsException>()
@@ -84,11 +88,13 @@ namespace ToDoList.Application.Tests.Services
                 new TaskEntity { Id = Guid.NewGuid(), Name = "Task 4", Description = "Test Task 4", DueDate = DateTime.Now.AddDays(3) }
             };
 
-            tasksRepositoryMock.Setup(repo => repo.GetAllAsync())
+            tasksRepositoryMock.Setup(repo => repo.GetAllAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedTasks);
+            
+            var cancellationToken = CancellationToken.None;
 
             // Act
-            var result = await tasksService.GetListAsync();
+            var result = await tasksService.GetListAsync(cancellationToken);
 
             // Assert
             result.Should().BeEquivalentTo(expectedTasks.Select(task => new GetTaskDto
@@ -120,21 +126,23 @@ namespace ToDoList.Application.Tests.Services
                 IsCompleted = false,
             };
 
-            tasksRepositoryMock.Setup(repo => repo.GetByIdAsync(It.IsAny<Guid>()))
+            tasksRepositoryMock.Setup(repo => repo.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(taskEntity);
 
             tasksRepositoryMock.Setup(repo => repo.Update(It.IsAny<TaskEntity>()))
                 .Callback<TaskEntity>(task => task.IsCompleted = true);
 
-            unitOfWorkMock.Setup(uow => uow.SaveAsync())
+            unitOfWorkMock.Setup(uow => uow.SaveAsync(It.IsAny<CancellationToken>()))
                 .Verifiable();
+            
+            var cancellationToken = CancellationToken.None;
 
             // Act
-            await tasksService.UpdateStatusAsync(id, updateTaskStatusDto);
+            await tasksService.UpdateStatusAsync(id, updateTaskStatusDto, cancellationToken);
 
             // Assert
             taskEntity.IsCompleted.Should().BeTrue();
-            unitOfWorkMock.Verify(uow => uow.SaveAsync(), Times.Once);
+            unitOfWorkMock.Verify(uow => uow.SaveAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -142,11 +150,13 @@ namespace ToDoList.Application.Tests.Services
         {
             // Arrange
             var id = Guid.NewGuid();
-            tasksRepositoryMock.Setup(repo => repo.GetByIdAsync(It.IsAny<Guid>()))
+            tasksRepositoryMock.Setup(repo => repo.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((TaskEntity)null);
 
+            var cancellationToken = CancellationToken.None;
+            
             // Act
-            var act = async () => await tasksService.UpdateStatusAsync(id, new UpdateTaskStatusDto());
+            var act = async () => await tasksService.UpdateStatusAsync(id, new UpdateTaskStatusDto(), cancellationToken);
 
             // Assert
             await act.Should().ThrowAsync<TaskNotFoundException>()
@@ -167,21 +177,23 @@ namespace ToDoList.Application.Tests.Services
                 IsCompleted = false,
             };
 
-            tasksRepositoryMock.Setup(repo => repo.GetByIdAsync(It.IsAny<Guid>()))
+            tasksRepositoryMock.Setup(repo => repo.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(taskEntity);
 
             tasksRepositoryMock.Setup(repo => repo.Delete(It.IsAny<TaskEntity>()))
                 .Verifiable();
 
-            unitOfWorkMock.Setup(uow => uow.SaveAsync())
+            unitOfWorkMock.Setup(uow => uow.SaveAsync(It.IsAny<CancellationToken>()))
                 .Verifiable();
+            
+            var cancellationToken = CancellationToken.None;
 
             // Act
-            await tasksService.DeleteAsync(id);
+            await tasksService.DeleteAsync(id, cancellationToken);
 
             // Assert
             tasksRepositoryMock.Verify(repo => repo.Delete(It.IsAny<TaskEntity>()), Times.Once);
-            unitOfWorkMock.Verify(uow => uow.SaveAsync(), Times.Once);
+            unitOfWorkMock.Verify(uow => uow.SaveAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -189,11 +201,13 @@ namespace ToDoList.Application.Tests.Services
         {
             // Arrange
             var id = Guid.NewGuid();
-            tasksRepositoryMock.Setup(repo => repo.GetByIdAsync(It.IsAny<Guid>()))
+            tasksRepositoryMock.Setup(repo => repo.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((TaskEntity)null);
 
+            var cancellationToken = CancellationToken.None;
+            
             // Act
-            var act = async () => await tasksService.DeleteAsync(id);
+            var act = async () => await tasksService.DeleteAsync(id, cancellationToken);
 
             // Assert
             await act.Should().ThrowAsync<TaskNotFoundException>()
