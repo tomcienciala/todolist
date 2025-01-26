@@ -8,15 +8,23 @@ namespace ToDoList.Application.Services;
 
 public class TasksService : ITasksService
 {
-    private readonly ITasksRepository tasksRepository;
+    private readonly IUnitOfWork unitOfWork;
+    private readonly IRepository<TaskEntity> tasksRepository;
 
-    public TasksService(ITasksRepository tasksRepository)
+    public TasksService(IUnitOfWork unitOfWork)
     {
-        this.tasksRepository = tasksRepository;
+        this.unitOfWork = unitOfWork;
+        tasksRepository = unitOfWork.GetRepository<TaskEntity>();
     }
-    public Guid Create(CreateTaskDto taskDto)
+    
+    public async Task<Guid> CreateAsync(CreateTaskDto taskDto)
     {
         var id = Guid.NewGuid();
+
+        if (await tasksRepository.GetByIdAsync(id) is not null)
+        {
+            throw new GuidAlreadyExistsException($"Task with Guid: {id} already exists.");
+        }
 
         var task = new TaskEntity()
         {
@@ -27,27 +35,28 @@ public class TasksService : ITasksService
             IsCompleted = true
         };
         
-        tasksRepository.Create(task);
-        tasksRepository.Save();
+        tasksRepository.Add(task);
+        await unitOfWork.SaveAsync();
         return id;
     }
 
-    public IEnumerable<GetTaskDto> GetList()
+    public async Task<IEnumerable<GetTaskDto>> GetListAsync()
     {
-        return tasksRepository.GetAll()
-            .Select(task => new GetTaskDto()
+        var taskList = await tasksRepository.GetAllAsync();
+        
+        return taskList.Select(task => new GetTaskDto()
             {
                 Id = task.Id,
                 Name = task.Name,
                 Description = task.Description,
                 DueDate = task.DueDate,
                 IsCompleted = task.IsCompleted
-            });
+        });
     }
 
-    public void UpdateStatus(Guid id, UpdateTaskStatusDto taskDto)
+    public async Task UpdateStatusAsync(Guid id, UpdateTaskStatusDto taskDto)
     {
-        var task = tasksRepository.Get(id);
+        var task = await tasksRepository.GetByIdAsync(id);
         if (task == null)
         {
             throw new TaskNotFoundException($"Task with ID {id} not found.");
@@ -55,18 +64,18 @@ public class TasksService : ITasksService
         
         task.IsCompleted = taskDto.IsCompleted;
         tasksRepository.Update(task);
-        tasksRepository.Save();
+        await unitOfWork.SaveAsync();
     }
 
-    public void Delete(Guid id)
+    public async Task DeleteAsync(Guid id)
     {
-        var task = tasksRepository.Get(id);
+        var task = await tasksRepository.GetByIdAsync(id);
         if (task == null)
         {
             throw new TaskNotFoundException($"Task with ID {id} not found.");
         }
         
-        tasksRepository.Delete(id);
-        tasksRepository.Save();
+        tasksRepository.Delete(task);
+        await unitOfWork.SaveAsync();
     }
 }

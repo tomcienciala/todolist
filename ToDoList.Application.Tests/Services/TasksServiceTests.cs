@@ -6,170 +6,198 @@ using ToDoList.Data.Entities;
 using ToDoList.Data.Interfaces;
 using ToDoList.Shared.Dto;
 
-namespace ToDoList.Application.Tests.Services;
-
-public class TasksServiceTests
+namespace ToDoList.Application.Tests.Services
 {
-    private readonly Mock<ITasksRepository> tasksRepositoryMock;
-    private readonly TasksService tasksService;
-    
-    public TasksServiceTests()
+    public class TasksServiceTests
     {
-        tasksRepositoryMock = new Mock<ITasksRepository>();
-        tasksService = new TasksService(tasksRepositoryMock.Object);
-    }
+        private readonly Mock<IUnitOfWork> unitOfWorkMock;
+        private readonly Mock<IRepository<TaskEntity>> tasksRepositoryMock;
+        private readonly TasksService tasksService;
 
-    [Fact]
-    public void Create_ReturnsSameIdAsInEntity_WhenTaskIsCreated()
-    {
-        // Arrange
-        var taskDto = new CreateTaskDto()
+        public TasksServiceTests()
         {
-            Name = "Test Name",
-            Description = "Test Desc",
-            DueDate = DateTime.Now,
-        };
-        
-        var expectedId = Guid.Empty;
-        tasksRepositoryMock.Setup(repo => repo.Create(It.IsAny<TaskEntity>()))
-            .Callback<TaskEntity>(task => expectedId = task.Id);
-        
-        tasksRepositoryMock.Setup(repo => repo.Save())
-            .Verifiable();
+            unitOfWorkMock = new Mock<IUnitOfWork>();
+            tasksRepositoryMock = new Mock<IRepository<TaskEntity>>();
+            unitOfWorkMock.Setup(uow => uow.GetRepository<TaskEntity>()).Returns(tasksRepositoryMock.Object);
+            tasksService = new TasksService(unitOfWorkMock.Object);
+        }
 
-        // Act
-        var result = tasksService.Create(taskDto);
-
-        // Assert
-        result.Should().Be(expectedId);
-        tasksRepositoryMock.Verify(repo => repo.Save(), Times.Once);
-    }
-
-    [Fact]
-    public void GetList_ReturnsTaskList_WhenMethodIsCalled()
-    {
-        // Arrange
-        var expectedTasks = new List<TaskEntity>
+        [Fact]
+        public async Task CreateAsync_ReturnsSameIdAsInEntity_WhenTaskIsCreated()
         {
-            new TaskEntity { Id = Guid.NewGuid(), Name = "Task 1", Description = "Test Task 1", DueDate = DateTime.Now },
-            new TaskEntity { Id = Guid.NewGuid(), Name = "Task 2", Description = "Test Task 2", DueDate = DateTime.Now.AddDays(1) },
-            new TaskEntity { Id = Guid.NewGuid(), Name = "Task 3", Description = "Test Task 3", DueDate = DateTime.Now.AddDays(2) },
-            new TaskEntity { Id = Guid.NewGuid(), Name = "Task 4", Description = "Test Task 4", DueDate = DateTime.Now.AddDays(3) }
-        };
-        
-        tasksRepositoryMock.Setup(repo => repo.GetAll())
-            .Returns(expectedTasks);
-        
-        // Act
-        var result = tasksService.GetList();
-        
-        // Assert
-        result.Should().BeEquivalentTo(expectedTasks);
-    }
+            // Arrange
+            var taskDto = new CreateTaskDto()
+            {
+                Name = "Test Name",
+                Description = "Test Desc",
+                DueDate = DateTime.Now,
+            };
 
-    [Fact]
-    public void UpdateStatus_ShouldUpdateTaskStatus_WhenMethodIsCalled()
-    {
-        // Arrange
-        var id = Guid.NewGuid();
-        var updateTaskStatusDto = new UpdateTaskStatusDto()
-        {
-            IsCompleted = true,
-        };
-        
-        var taskEntity = new TaskEntity()
-        {
-            Id = id,
-            Name = "Task 1",
-            Description = "Test Description",
-            DueDate = DateTime.Now,
-            IsCompleted = false,
-        };
-        tasksRepositoryMock.Setup(repo => repo.Get(It.IsAny<Guid>()))
-            .Returns(taskEntity);
-        
-        var actualTask = new TaskEntity();
-        tasksRepositoryMock.Setup(repo => repo.Update(It.IsAny<TaskEntity>()))
-            .Callback<TaskEntity>(task => actualTask = task);
-        
-        tasksRepositoryMock.Setup(repo => repo.Save())
-            .Verifiable();
-        
-        var expectedTask = new TaskEntity()
-        {
-            Id = taskEntity.Id,
-            Name = taskEntity.Name,
-            Description = taskEntity.Description,
-            DueDate = taskEntity.DueDate,
-            IsCompleted = true,
-        };
-        
-        // Act
-        tasksService.UpdateStatus(id, updateTaskStatusDto);
-        
-        // Assert
-        actualTask.Should().BeEquivalentTo(expectedTask);
-        tasksRepositoryMock.Verify(repo => repo.Save(), Times.Once);
-    }
+            var expectedId = Guid.NewGuid();
+            tasksRepositoryMock.Setup(repo => repo.Add(It.IsAny<TaskEntity>()))
+                .Callback<TaskEntity>(task => expectedId = task.Id);
 
-    [Fact]
-    public void UpdateStatus_ThrowsTaskNotFoundException_WhenTaskDoesNotExist()
-    {
-        // Arrange
-        var id = Guid.NewGuid();
-        tasksRepositoryMock.Setup(repo => repo.Get(It.IsAny<Guid>()))
-            .Returns((TaskEntity)null);
-        
-        // Act
-        var act = () => tasksService.UpdateStatus(id, new UpdateTaskStatusDto());
-        
-        // Assert
-        act.Should().Throw<TaskNotFoundException>().WithMessage($"Task with ID {id} not found.");
-    }
+            unitOfWorkMock.Setup(uow => uow.SaveAsync())
+                .Verifiable();
 
-    [Fact]
-    public void Delete_ShouldDeleteTask_WhenMethodIsCalled()
-    {
-        // Arrange
-        var id = Guid.NewGuid();
+            // Act
+            var result = await tasksService.CreateAsync(taskDto);
 
-        var taskEntity = new TaskEntity()
+            // Assert
+            result.Should().Be(expectedId);
+            unitOfWorkMock.Verify(uow => uow.SaveAsync(), Times.Once);
+        }
+        
+        [Fact]
+        public async Task CreateAsync_ThrowsGuidAlreadyExistsException_WhenGuidAlreadyExists()
         {
-            Id = id,
-            Name = "Task 1",
-            Description = "Test Description",
-            DueDate = DateTime.Now,
-            IsCompleted = false,
-        };
-        tasksRepositoryMock.Setup(repo => repo.Get(It.IsAny<Guid>()))
-            .Returns(taskEntity);
-        
-        tasksRepositoryMock.Setup(repo => repo.Delete(id))
-            .Verifiable();
-        tasksRepositoryMock.Setup(repo => repo.Save())
-            .Verifiable();
-        
-        // Act
-        tasksService.Delete(id);
-        
-        // Assert
-        tasksRepositoryMock.Verify(repo => repo.Delete(It.IsAny<Guid>()), Times.Once);
-        tasksRepositoryMock.Verify(repo => repo.Save(), Times.Once);
-    }
-    
-    [Fact]
-    public void Delete_ThrowsTaskNotFoundException_WhenTaskDoesNotExist()
-    {
-        // Arrange
-        var id = Guid.NewGuid();
-        
-        tasksRepositoryMock.Setup(repo => repo.Get(It.IsAny<Guid>()))
-            .Returns((TaskEntity)null);
-        
-        // Act
-        var act = () => tasksService.Delete(id);
-        
-        // Assert
-        act.Should().Throw<TaskNotFoundException>().WithMessage($"Task with ID {id} not found.");
+            // Arrange
+            var taskDto = new CreateTaskDto()
+            {
+                Name = "Test Name",
+                Description = "Test Desc",
+                DueDate = DateTime.Now,
+            };
+            
+            var generatedId = Guid.NewGuid();
+            tasksRepositoryMock.Setup(repo => repo.GetByIdAsync(It.IsAny<Guid>()))
+                .Callback<Guid>(id => generatedId = id)
+                .ReturnsAsync(new TaskEntity());
+
+            // Act
+            var act = async () => await tasksService.CreateAsync(taskDto);
+
+            // Assert
+            await act.Should().ThrowAsync<GuidAlreadyExistsException>()
+                .WithMessage($"Task with Guid: {generatedId} already exists.");
+        }
+
+        [Fact]
+        public async Task GetListAsync_ReturnsTaskList_WhenMethodIsCalled()
+        {
+            // Arrange
+            var expectedTasks = new List<TaskEntity>
+            {
+                new TaskEntity { Id = Guid.NewGuid(), Name = "Task 1", Description = "Test Task 1", DueDate = DateTime.Now },
+                new TaskEntity { Id = Guid.NewGuid(), Name = "Task 2", Description = "Test Task 2", DueDate = DateTime.Now.AddDays(1) },
+                new TaskEntity { Id = Guid.NewGuid(), Name = "Task 3", Description = "Test Task 3", DueDate = DateTime.Now.AddDays(2) },
+                new TaskEntity { Id = Guid.NewGuid(), Name = "Task 4", Description = "Test Task 4", DueDate = DateTime.Now.AddDays(3) }
+            };
+
+            tasksRepositoryMock.Setup(repo => repo.GetAllAsync())
+                .ReturnsAsync(expectedTasks);
+
+            // Act
+            var result = await tasksService.GetListAsync();
+
+            // Assert
+            result.Should().BeEquivalentTo(expectedTasks.Select(task => new GetTaskDto
+            {
+                Id = task.Id,
+                Name = task.Name,
+                Description = task.Description,
+                DueDate = task.DueDate,
+                IsCompleted = task.IsCompleted
+            }));
+        }
+
+        [Fact]
+        public async Task UpdateStatusAsync_ShouldUpdateTaskStatus_WhenMethodIsCalled()
+        {
+            // Arrange
+            var id = Guid.NewGuid();
+            var updateTaskStatusDto = new UpdateTaskStatusDto()
+            {
+                IsCompleted = true,
+            };
+
+            var taskEntity = new TaskEntity()
+            {
+                Id = id,
+                Name = "Task 1",
+                Description = "Test Description",
+                DueDate = DateTime.Now,
+                IsCompleted = false,
+            };
+
+            tasksRepositoryMock.Setup(repo => repo.GetByIdAsync(It.IsAny<Guid>()))
+                .ReturnsAsync(taskEntity);
+
+            tasksRepositoryMock.Setup(repo => repo.Update(It.IsAny<TaskEntity>()))
+                .Callback<TaskEntity>(task => task.IsCompleted = true);
+
+            unitOfWorkMock.Setup(uow => uow.SaveAsync())
+                .Verifiable();
+
+            // Act
+            await tasksService.UpdateStatusAsync(id, updateTaskStatusDto);
+
+            // Assert
+            taskEntity.IsCompleted.Should().BeTrue();
+            unitOfWorkMock.Verify(uow => uow.SaveAsync(), Times.Once);
+        }
+
+        [Fact]
+        public async Task UpdateStatusAsync_ThrowsTaskNotFoundException_WhenTaskDoesNotExist()
+        {
+            // Arrange
+            var id = Guid.NewGuid();
+            tasksRepositoryMock.Setup(repo => repo.GetByIdAsync(It.IsAny<Guid>()))
+                .ReturnsAsync((TaskEntity)null);
+
+            // Act
+            var act = async () => await tasksService.UpdateStatusAsync(id, new UpdateTaskStatusDto());
+
+            // Assert
+            await act.Should().ThrowAsync<TaskNotFoundException>()
+                .WithMessage($"Task with ID {id} not found.");
+        }
+
+        [Fact]
+        public async Task DeleteAsync_ShouldDeleteTask_WhenMethodIsCalled()
+        {
+            // Arrange
+            var id = Guid.NewGuid();
+            var taskEntity = new TaskEntity()
+            {
+                Id = id,
+                Name = "Task 1",
+                Description = "Test Description",
+                DueDate = DateTime.Now,
+                IsCompleted = false,
+            };
+
+            tasksRepositoryMock.Setup(repo => repo.GetByIdAsync(It.IsAny<Guid>()))
+                .ReturnsAsync(taskEntity);
+
+            tasksRepositoryMock.Setup(repo => repo.Delete(It.IsAny<TaskEntity>()))
+                .Verifiable();
+
+            unitOfWorkMock.Setup(uow => uow.SaveAsync())
+                .Verifiable();
+
+            // Act
+            await tasksService.DeleteAsync(id);
+
+            // Assert
+            tasksRepositoryMock.Verify(repo => repo.Delete(It.IsAny<TaskEntity>()), Times.Once);
+            unitOfWorkMock.Verify(uow => uow.SaveAsync(), Times.Once);
+        }
+
+        [Fact]
+        public async Task DeleteAsync_ThrowsTaskNotFoundException_WhenTaskDoesNotExist()
+        {
+            // Arrange
+            var id = Guid.NewGuid();
+            tasksRepositoryMock.Setup(repo => repo.GetByIdAsync(It.IsAny<Guid>()))
+                .ReturnsAsync((TaskEntity)null);
+
+            // Act
+            var act = async () => await tasksService.DeleteAsync(id);
+
+            // Assert
+            await act.Should().ThrowAsync<TaskNotFoundException>()
+                .WithMessage($"Task with ID {id} not found.");
+        }
     }
 }

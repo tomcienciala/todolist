@@ -20,7 +20,7 @@ public class TasksControllerTests
     }
     
     [Fact]
-    public void Create_ReturnsOkResult_WithTaskId()
+    public async Task CreateAsync_ReturnsOkResult_WithTaskId()
     {
         // Arrange
         var createTaskDto = new CreateTaskDto
@@ -31,25 +31,49 @@ public class TasksControllerTests
         };
         
         var taskId = Guid.NewGuid();
-        tasksServiceMock.Setup(service => service.Create(It.IsAny<CreateTaskDto>())).Returns(taskId);
+        tasksServiceMock.Setup(service => service.CreateAsync(It.IsAny<CreateTaskDto>())).ReturnsAsync(taskId);
 
         // Act
-        var result = controller.Create(createTaskDto);
+        var result = await controller.CreateAsync(createTaskDto);
 
         // Assert
         result.Should().BeOfType<ActionResult<Guid>>()
             .Which.Result.Should().BeOfType<OkObjectResult>()
             .Which.Value.Should().Be(taskId);
     }
-    
+
     [Fact]
-    public void GetList_ReturnsEmptyList_WhenNoTasksExist()
+    public async Task CreateAsync_ThrowsException_WhenNewGuidConflicts()
     {
         // Arrange
-        tasksServiceMock.Setup(service => service.GetList()).Returns(new List<GetTaskDto>());
+        var createTaskDto = new CreateTaskDto
+        {
+            Name = "New Task",
+            Description = "Task Description",
+            DueDate = DateTime.Now.AddDays(1)
+        };
+        
+        var taskId = Guid.NewGuid();
+        tasksServiceMock.Setup(service => service.CreateAsync(It.IsAny<CreateTaskDto>()))
+            .Throws(new GuidAlreadyExistsException($"Task with Guid: {taskId} already exists."));
+        
+        // Act
+        var result = await controller.CreateAsync(createTaskDto);
+        
+        // Assert
+        result.Should().BeOfType<ActionResult<Guid>>()
+            .Which.Result.Should().BeOfType<ConflictObjectResult>()
+            .Which.Value.Should().BeEquivalentTo(new { message = $"Task with Guid: {taskId} already exists." });
+    }
+    
+    [Fact]
+    public async Task GetListAsync_ReturnsEmptyList_WhenNoTasksExist()
+    {
+        // Arrange
+        tasksServiceMock.Setup(service => service.GetListAsync()).ReturnsAsync(new List<GetTaskDto>());
 
         // Act
-        var result = controller.GetList();
+        var result = await controller.GetListAsync();
 
         // Assert
         result.Should().BeOfType<ActionResult<IEnumerable<GetTaskDto>>>()
@@ -59,16 +83,16 @@ public class TasksControllerTests
     }
     
     [Fact]
-    public void Update_ReturnsOkResult_WhenValidData()
+    public async Task UpdateAsync_ReturnsOkResult_WhenValidData()
     {
         // Arrange
         var updateTaskStatusDto = new UpdateTaskStatusDto { IsCompleted = true };
         var taskId = Guid.NewGuid();
-        tasksServiceMock.Setup(service => service.UpdateStatus(It.IsAny<Guid>(), It.IsAny<UpdateTaskStatusDto>()))
+        tasksServiceMock.Setup(service => service.UpdateStatusAsync(It.IsAny<Guid>(), It.IsAny<UpdateTaskStatusDto>()))
             .Verifiable();
 
         // Act
-        var result = controller.Update(taskId, updateTaskStatusDto);
+        var result = await controller.UpdateAsync(taskId, updateTaskStatusDto);
 
         // Assert
         result.Should().BeOfType<OkResult>();
@@ -77,16 +101,16 @@ public class TasksControllerTests
     }
     
     [Fact]
-    public void Update_ReturnsNotFound_WhenTaskDoesNotExist()
+    public async Task UpdateAsync_ReturnsNotFound_WhenTaskDoesNotExist()
     {
         // Arrange
         var updateTaskStatusDto = new UpdateTaskStatusDto { IsCompleted = true };
         var taskId = Guid.NewGuid();
-        tasksServiceMock.Setup(service => service.UpdateStatus(It.IsAny<Guid>(), It.IsAny<UpdateTaskStatusDto>()))
+        tasksServiceMock.Setup(service => service.UpdateStatusAsync(It.IsAny<Guid>(), It.IsAny<UpdateTaskStatusDto>()))
             .Throws(new TaskNotFoundException($"Task {taskId} not found."));
 
         // Act
-        var result = controller.Update(taskId, updateTaskStatusDto);
+        var result = await controller.UpdateAsync(taskId, updateTaskStatusDto);
 
         // Assert
         result.Should().BeOfType<NotFoundObjectResult>()
@@ -94,15 +118,15 @@ public class TasksControllerTests
     }
     
     [Fact]
-    public void Delete_ReturnsNotFound_WhenTaskDoesNotExist()
+    public async Task DeleteAsync_ReturnsNotFound_WhenTaskDoesNotExist()
     {
         // Arrange
         var taskId = Guid.NewGuid();
-        tasksServiceMock.Setup(service => service.Delete(taskId))
+        tasksServiceMock.Setup(service => service.DeleteAsync(taskId))
             .Throws(new TaskNotFoundException($"Task {taskId} not found."));
 
         // Act
-        var result = controller.Delete(taskId);
+        var result = await controller.DeleteAsync(taskId);
 
         // Assert
         result.Should().BeOfType<NotFoundObjectResult>()
@@ -110,18 +134,18 @@ public class TasksControllerTests
     }
 
     [Fact]
-    public void Delete_ReturnsNoContent_WhenTaskDeleted()
+    public async Task DeleteAsync_ReturnsNoContent_WhenTaskDeleted()
     {
         // Arrange
         var taskId = Guid.NewGuid();
-        tasksServiceMock.Setup(service => service.Delete(It.IsAny<Guid>())).Verifiable();
+        tasksServiceMock.Setup(service => service.DeleteAsync(It.IsAny<Guid>())).Verifiable();
 
         // Act
-        var result = controller.Delete(taskId);
+        var result = await controller.DeleteAsync(taskId);
 
         // Assert
         result.Should().BeOfType<NoContentResult>();
         
-        tasksServiceMock.Verify(service => service.Delete(taskId), Times.Once);
+        tasksServiceMock.Verify(service => service.DeleteAsync(taskId), Times.Once);
     }
 }

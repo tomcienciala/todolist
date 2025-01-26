@@ -17,26 +17,7 @@ public class TasksController : ControllerBase
     }
 
     [HttpPost]
-    public ActionResult<Guid> Create([FromBody] CreateTaskDto createTaskDto)
-    {
-        if (!ModelState.IsValid)
-        {
-            return BadRequest(ModelState);
-        }
-        
-        var taskId = tasksService.Create(createTaskDto);
-        return Ok(taskId);
-    }
-    
-    [HttpGet]
-    public ActionResult<IEnumerable<GetTaskDto>> GetList()
-    {
-        var taskList = tasksService.GetList();
-        return Ok(taskList);
-    }
-
-    [HttpPatch("{id}")]
-    public ActionResult Update(Guid id, [FromBody] UpdateTaskStatusDto updateTaskStatusDto)
+    public async Task<ActionResult<Guid>> CreateAsync([FromBody] CreateTaskDto createTaskDto)
     {
         if (!ModelState.IsValid)
         {
@@ -45,7 +26,33 @@ public class TasksController : ControllerBase
 
         try
         {
-            tasksService.UpdateStatus(id, updateTaskStatusDto);
+            var taskId = await tasksService.CreateAsync(createTaskDto);
+            return Ok(taskId);
+        }
+        catch (GuidAlreadyExistsException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+    }
+    
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<GetTaskDto>>> GetListAsync()
+    {
+        var taskList = await tasksService.GetListAsync();
+        return Ok(taskList);
+    }
+
+    [HttpPatch("{id}")]
+    public async Task<ActionResult> UpdateAsync(Guid id, [FromBody] UpdateTaskStatusDto updateTaskStatusDto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        try
+        {
+            await tasksService.UpdateStatusAsync(id, updateTaskStatusDto);
             return Ok();
         }
         catch (TaskNotFoundException ex)
@@ -55,11 +62,11 @@ public class TasksController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    public ActionResult Delete(Guid id)
+    public async Task<ActionResult> DeleteAsync(Guid id)
     {
         try
         {
-            tasksService.Delete(id);
+            await tasksService.DeleteAsync(id);
             return NoContent();
         }
         catch (TaskNotFoundException ex)
